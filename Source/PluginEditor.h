@@ -34,6 +34,9 @@ public:
     void filesDropped (const juce::StringArray&, int x, int y) override;
 
     stsample::PadView* getPadView() noexcept { return padView.get(); }
+    /** Offline rendering (videos, tests): stop the frame clock and advance the animation by hand. */
+    void useExternalClock() { clock.reset(); }
+    void advanceFrame (double dt) { animate (dt); }
     stsample::Keyboard& getKeyboard() noexcept { return keyboard; }
 
 private:

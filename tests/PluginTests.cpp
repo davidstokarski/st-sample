@@ -583,6 +583,67 @@ struct Snapshotter : juce::Timer
 
 juce::File snapshotDir;
 
+/** Renders a looping clip's frames (1560 x 1036 at 46.875 fps = 1024 samples per frame at 48 kHz): a groove on the
+    Layer Lab kit, the XY puck circling, the selection moving from the kick to the snare halfway. */
+int renderVideo (const juce::File& dir, int frames)
+{
+    juce::ScopedJuceInitialiser_GUI gui;
+    dir.createDirectory();
+    StSampleProcessor p;
+    p.setPlayConfigDetails (0, 2, 48000.0, 1024);
+    p.prepareToPlay (48000.0, 1024);
+    for (int i = 0; i < (int) p.presets.getPresets().size(); ++i)
+        if (p.presets.getPresets()[(size_t) i].name == "Layer Lab") p.presets.loadPreset (i);
+    p.getKit().waitUntilLoaded();
+    p.uiState.setProperty ("selectedPad", 0, nullptr);
+
+    std::unique_ptr<juce::AudioProcessorEditor> ed (p.createEditor());
+    auto* editor = dynamic_cast<StSampleEditor*> (ed.get());
+    editor->useExternalClock();
+    ed->setSize (StSampleEditor::designWidth, StSampleEditor::designHeight);
+
+    // 16ths at 100 BPM; pattern per step: kick, snare, closed hat, open hat, clap
+    const int step = 7200;
+    const char* kick  = "x.....x...x.....x.....x..x......";
+    const char* snare = "....x.......x.......x.......x..x";
+    const char* hat   = "x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.";
+    const char* open  = "..............x...............x.";
+    const double dt = 1024.0 / 48000.0;
+    juce::AudioBuffer<float> buf (2, 1024);
+    for (int f = 0; f < frames; ++f)
+    {
+        const juce::int64 t0 = (juce::int64) f * 1024;
+        juce::MidiBuffer midi;
+        for (juce::int64 s = ((t0 + step - 1) / step) * step; s < t0 + 1024; s += step)
+        {
+            const int i = (int) ((s / step) % 32);
+            const int off = (int) (s - t0);
+            auto hit = [&] (int note, int vel) { midi.addEvent (juce::MidiMessage::noteOn (1, note, (juce::uint8) vel), off); };
+            if (kick[i] == 'x') hit (36, 120);
+            if (snare[i] == 'x') hit (38, i == 31 ? 70 : 115);
+            if (hat[i] == 'x' && open[i] != 'x') hit (42, i % 4 == 0 ? 100 : 70);
+            if (open[i] == 'x') hit (46, 95);
+        }
+
+        const int pad = f < frames / 2 ? 0 : 2;
+        if (f == frames / 2) editor->selectPad (2);
+        const double ph = juce::MathConstants<double>::twoPi * (double) f / (double) (frames / 2);
+        p.setPlain (p.padParam (pad, "x"), (float) (0.5 + 0.32 * std::cos (ph + (pad == 0 ? 2.4 : 0.6))), false);
+        p.setPlain (p.padParam (pad, "y"), (float) (0.5 + 0.30 * std::sin (ph + (pad == 0 ? 2.4 : 0.6))), false);
+
+        p.processBlock (buf, midi);
+        editor->advanceFrame (dt);
+        auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.5f);
+        auto file = dir.getChildFile (juce::String (f).paddedLeft ('0', 4) + ".png");
+        juce::FileOutputStream out (file);
+        out.setPosition (0);
+        out.truncate();
+        juce::PNGImageFormat().writeImageToStream (img, out);
+    }
+    std::cout << "wrote " << frames << " frames to " << dir.getFullPathName() << "\n";
+    return 0;
+}
+
 struct SnapshotApp : juce::JUCEApplicationBase
 {
     std::unique_ptr<StSampleProcessor> proc;
@@ -654,6 +715,8 @@ juce::JUCEApplicationBase* createSnapshotApp() { return new SnapshotApp(); }
 int main (int argc, char** argv)
 {
     juce::StringArray args (argv + 1, argc - 1);
+    if (args.contains ("--video"))
+        return renderVideo (juce::File (args[args.indexOf ("--video") + 1]), 367);
     if (args.contains ("--snapshot"))
     {
         snapshotDir = juce::File (args[args.indexOf ("--snapshot") + 1]);
