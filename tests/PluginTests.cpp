@@ -712,9 +712,13 @@ struct SnapshotApp : juce::JUCEApplicationBase
 juce::JUCEApplicationBase* createSnapshotApp() { return new SnapshotApp(); }
 } // namespace
 
+int runUseCaseVideos (int argc, char** argv);   // UseCases.cpp
+
 int main (int argc, char** argv)
 {
     juce::StringArray args (argv + 1, argc - 1);
+    if (args.contains ("--usecases"))
+        return runUseCaseVideos (argc, argv);
     if (args.contains ("--video"))
         return renderVideo (juce::File (args[args.indexOf ("--video") + 1]), 367);
     if (args.contains ("--snapshot"))

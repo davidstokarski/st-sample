@@ -28,4 +28,6 @@ Plugin-specific notes:
   theme, layer colours coral / gold / teal / sky). Components talk to the editor through `Services` (`ui/Common.h`).
 - Verify: `StSamplePluginTests` (engine, loading, undo, state, A/B, presets, block sizes, CPU),
   `StSamplePluginTests --snapshot <dir>` (look at the PNGs), `auval -v aumu Stsm StAu`.
+  Website videos: `StSamplePluginTests --usecases <dir> [scene ...]` (`tests/UseCases.cpp`, on the shell's
+  `st_shell/testing/st_video.h`, a MIDI groove plays the kit): scenes layer-kick, tune-kit.
 - Anything reusable belongs in st-shell, not here.
