@@ -52,3 +52,7 @@ cmake -S . -B build -DSTSAMPLE_BUILD_TESTS=ON && cmake --build build
 ```
 
 Release (universal build → zip with the .vst3 and .component): `scripts/release.sh` (see st-shell `docs/RELEASING.md`).
+
+## Contributing
+
+See the shared [contributor notes](https://github.com/davidstokarski/st-shell/blob/main/CONTRIBUTING.md) in ST Shell. All PRs to `main` need approval from @davidstokarski.
